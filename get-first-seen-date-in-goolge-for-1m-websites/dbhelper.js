@@ -1,14 +1,14 @@
 // dbhelper.js
 
 import mysql from 'mysql2/promise';
-import { connect } from '@tidbcloud/serverless'; // Ensure you have this installed if using TiDB
+import { D1Client } from '@cloudflare/d1';
 
 // Configuration for MySQL and D1
 const mysqlConfig = {
     host: 'gateway01.us-west-2.prod.aws.tidbcloud.com',
     port: 4000,
     user: '3i7meP2hYPkDk3V.root',
-    password: 'xxxxxxxxxxxxxxxxxxxxx',
+    password: 'xxxxxxxxxxxxx',
     database: 'test',
     ssl: {
         ca: './isrgrootx1.pem',
@@ -18,8 +18,10 @@ const mysqlConfig = {
 };
 
 const d1Config = {
-    url: 'mysql://[username]:[password]@[host]/[database]', // Update with your D1 credentials
+    connectionString: 'https://YOUR_ACCOUNT_NAME.cloudflareaccess.com/d1/YOUR_DATABASE_NAME' // Update with your Cloudflare D1 credentials
 };
+
+const d1Client = new D1Client(d1Config);
 
 // MySQL Database helper functions
 export async function queryMySQL(query, params = []) {
@@ -34,12 +36,12 @@ export async function queryMySQL(query, params = []) {
 
 // D1 Database helper functions
 export async function queryD1(query, params = []) {
-    const conn = connect(d1Config);
     try {
-        const [rows] = await conn.execute(query, params);
+        const [rows] = await d1Client.execute(query, params);
         return rows;
-    } finally {
-        conn.end();
+    } catch (error) {
+        console.error('D1 query error:', error);
+        throw error;
     }
 }
 
