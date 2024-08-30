@@ -1,5 +1,6 @@
 import csv
 import mysql.connector
+from mysql.connector import Error
 import cloudflare
 from cloudflare import Cloudflare
 import os
@@ -33,7 +34,7 @@ def load_undone_domains_mysql():
         query = "SELECT domain FROM domain_index_data WHERE indexdate = 'unk'"
         cursor.execute(query)
         return [row[0] for row in cursor.fetchall()]
-    except mysql.connector.Error as err:
+    except Error as err:
         print(f"Error: {err}")
         return []
     finally:
@@ -43,11 +44,9 @@ def load_undone_domains_mysql():
 def load_undone_domains_cloudflare():
     """Load undone domains from Cloudflare D1."""
     try:
-        zones = cf.zones.get()
-        # Assuming Cloudflare D1 is connected to a zone and you have an API endpoint to get domains
-        # Replace with actual implementation to fetch domains from D1
-        response = cf.zones.get()  # Modify to actual endpoint call
-        return [domain['name'] for domain in response['domains'] if domain['indexdate'] == 'unk']
+        # Replace with actual endpoint call to Cloudflare D1 if available
+        response = cf.zones.get()  # Modify with actual endpoint call
+        return [domain['name'] for domain in response if domain.get('indexdate') == 'unk']
     except cloudflare.exceptions.CloudflareAPIError as e:
         print(f"Cloudflare API error: {e}")
         return []
@@ -78,7 +77,7 @@ def save_data_mysql(data):
                 (record['domain'], record['indexdate'], record['Aboutthesource'], record['Intheirownwords'])
             )
         connection.commit()
-    except mysql.connector.Error as err:
+    except Error as err:
         print(f"Error: {err}")
     finally:
         cursor.close()
@@ -88,9 +87,9 @@ def save_data_cloudflare(data):
     """Save data to Cloudflare D1."""
     try:
         # Implement saving to Cloudflare D1
-        # For example, if Cloudflare D1 supports an API to save data:
+        # Example: replace with actual API endpoint and data format
         for record in data:
-            cf.zones.post("your_endpoint", data=record)  # Modify with actual API endpoint and data format
+            cf.zones.post("your_endpoint", data=record)  # Modify with actual API endpoint
     except cloudflare.exceptions.CloudflareAPIError as e:
         print(f"Cloudflare API error: {e}")
 
