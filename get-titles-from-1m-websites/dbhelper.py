@@ -1,7 +1,19 @@
 # dbhelper.py
+
 import mysql.connector
 from mysql.connector import Error
+from cloudflare_d1 import CloudflareD1
 
+class Domain:
+    def __init__(self, url, tld, title, description, raw, language):
+        self.url = url
+        self.tld = tld
+        self.title = title
+        self.description = description
+        self.raw = raw
+        self.language = language
+
+# MySQL Helper
 class MySQLHelper:
     def __init__(self, host, user, password, database):
         self.connection = mysql.connector.connect(
@@ -10,6 +22,7 @@ class MySQLHelper:
             password=password,
             database=database
         )
+        self.create_table()
 
     def create_table(self):
         create_table_query = """
@@ -41,10 +54,7 @@ class MySQLHelper:
         if self.connection.is_connected():
             self.connection.close()
 
-
-# dbhelper.py (extend this file)
-from cloudflare_d1 import CloudflareD1
-
+# Cloudflare D1 Helper
 class D1Helper:
     def __init__(self, api_token, database_id):
         self.client = CloudflareD1(api_token)
@@ -52,7 +62,6 @@ class D1Helper:
         self.setup()
 
     def setup(self):
-        # Define the schema for the table
         schema = {
             "id": "INTEGER PRIMARY KEY AUTOINCREMENT",
             "url": "TEXT NOT NULL",
@@ -76,4 +85,4 @@ class D1Helper:
         self.client.insert(self.database_id, "domains", insert_data)
 
     def close(self):
-        pass  # No action needed for Cloudflare D1 on close
+        pass
