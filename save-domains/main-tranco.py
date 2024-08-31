@@ -67,10 +67,22 @@ def get_latest_rank(session, domain_name):
 # Main execution
 def main():
     # Database configuration
-    DATABASE_URL = 'mysql+pymysql://username:password@host/dbname'
+    db_config = {
+        'host': "gateway01.us-west-2.prod.aws.tidbcloud.com",
+        'port': 4000,
+        'user': "3i7meP2hYPkDk3V.root",
+        'password': "xxxx",
+        'database': "test",
+        'ssl_ca': "./isrgrootx1.pem"
+    }
 
-    # Create the database engine and session
-    engine = create_engine(DATABASE_URL)
+    # Create SQLAlchemy engine
+    engine = create_engine(
+        f"mysql+mysqlconnector://{db_config['user']}:{db_config['password']}@{db_config['host']}:{db_config['port']}/{db_config['database']}?ssl_ca={db_config['ssl_ca']}",
+        pool_size=10,
+        max_overflow=20,
+        pool_timeout=30
+    )
     Base.metadata.create_all(engine)
     Session = sessionmaker(bind=engine)
     session = Session()
