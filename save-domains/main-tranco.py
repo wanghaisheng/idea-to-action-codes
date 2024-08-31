@@ -1,5 +1,7 @@
 import requests
 import pandas as pd
+import zipfile
+import io
 from sqlalchemy import create_engine, Column, Integer, String, ForeignKey, Date
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, relationship
@@ -20,14 +22,21 @@ class TrancoDomain(Base):
     id = Column(Integer, primary_key=True)
     rank = Column(Integer)
     domain = Column(String(255))
-    update_id = Column(Integer, ForeignKey('update_history.id'))
+    update_id = Column(Integer, ForeignKey('tranco_domains_update_history.id'))
     update = relationship("UpdateHistory")
 
-# Function to download the CSV file
-def download_csv(url, filename):
+# Function to download and extract the ZIP file
+def download_and_extract_zip(url):
     response = requests.get(url)
-    with open(filename, 'wb') as file:
-        file.write(response.content)
+    with zipfile.ZipFile(io.BytesIO(response.content)) as z:
+        # List all files in the ZIP archive
+        file_names = z.namelist()
+        # Assume the first file is the CSV file
+        csv_file_name = file_names[0]
+        # Extract the CSV file content
+        with z.open(csv_file_name) as file:
+            df = pd.read_csv(file)
+    return df
 
 # Function to insert data into the database
 def insert_data(session, df):
@@ -50,8 +59,7 @@ def insert_data(session, df):
 
 # Function to query the latest rank for a specific domain
 def get_latest_rank(session, domain_name):
-    latest_update = aliased(UpdateHistory)
-    latest_domain = session.query(TrancoDomain).join(latest_update, TrancoDomain.update_id == latest_update.id).filter(TrancoDomain.domain == domain_name).order_by(latest_update.update_date.desc()).first()
+    latest_domain = session.query(TrancoDomain).join(UpdateHistory, TrancoDomain.update_id == UpdateHistory.id).filter(TrancoDomain.domain == domain_name).order_by(UpdateHistory.update_date.desc()).first()
     
     if latest_domain:
         update = session.query(UpdateHistory).get(latest_domain.update_id)
@@ -68,17 +76,16 @@ def get_latest_rank(session, domain_name):
 def main():
     # Database configuration
     db_config = {
-        'host': "gateway01.us-west-2.prod.aws.tidbcloud.com",
-        'port': 4000,
-        'user': "3i7meP2hYPkDk3V.root",
-        'password': "xxxx",
-        'database': "test",
-        'ssl_ca': "./isrgrootx1.pem"
+        'host': "your-postgres-host",
+        'port': 5432,
+        'user': "your-username",
+        'password': "your-password",
+        'database': "your-database"
     }
 
     # Create SQLAlchemy engine
     engine = create_engine(
-        f"mysql+mysqlconnector://{db_config['user']}:{db_config['password']}@{db_config['host']}:{db_config['port']}/{db_config['database']}?ssl_ca={db_config['ssl_ca']}",
+        f"postgresql://{db_config['user']}:{db_config['password']}@{db_config['host']}:{db_config['port']}/{db_config['database']}",
         pool_size=10,
         max_overflow=20,
         pool_timeout=30
@@ -87,15 +94,11 @@ def main():
     Session = sessionmaker(bind=engine)
     session = Session()
 
-    # Define the CSV file URL and local filename
-    csv_url = 'https://tranco-list.eu/download/YXW2G/full'
-    csv_filename = 'tranco_full.csv'
+    # Define the ZIP file URL
+    zip_url = 'https://tranco-list.eu/download/YXW2G/full.zip'
 
-    # Download the CSV file
-    download_csv(csv_url, csv_filename)
-
-    # Read the CSV file into a DataFrame
-    df = pd.read_csv(csv_filename)
+    # Download and extract the ZIP file
+    df = download_and_extract_zip(zip_url)
 
     # Insert data into the database
     insert_data(session, df)
